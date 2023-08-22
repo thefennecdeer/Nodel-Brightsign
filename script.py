@@ -1,10 +1,13 @@
 '''
 ##### **Brightsign Node** <sup>v1.0</sup> 
-_Requires the [Nodel Brightsign Plugin](https://developer.android.com/tools/releases/platform-tools)_
+Requires the [Nodel Brightsign Plugin](https://github.com/thefennecdeer/Nodel-Brightsign)
+
+---
 
 Monitors state of Brightsign, and allows remote control of Playback, Muting, and Sleep.
 
 Sleep is the Brightsign's native 'Powersaving' mode, which disables all video and audio outputs and pauses playbacks, allowing screens to enter powersaving mode.
+
 
 '''
 
@@ -115,6 +118,7 @@ def send_get(value):
   global fullAddress
   try: 
     resp = get_url(fullAddress + value, fullResponse=True)
+    status_get()
   except: 
     console.error("Failed to Connect")
   else:
@@ -142,30 +146,30 @@ def status_get():
       lookup_local_event('Serial').emit(status_decode['serialNumber'])
       lookup_local_event('VideoMode').emit(status_decode['videomode'])
 
-      if status_decode['sleep'] == True:
+      if status_decode['sleep'] == "true":
         lookup_local_event('Power').emit('Off')
         if lookup_local_event('DesiredPower').getArg() == "On":
           lookup_local_action("Sleep").call()
-      elif status_decode['sleep'] == False:
+      elif status_decode['sleep'] == "false":
         lookup_local_event('Power').emit('On')
         if lookup_local_event('DesiredPower').getArg() == "Off":
           lookup_local_action("Wake").call()
       
 
-      if status_decode['playing'] == True :
+      if status_decode['playing'] == "true" :
         lookup_local_event('Playback').emit('Playing')
         if lookup_local_event('DesiredPlayback').getArg() == "Paused":
           lookup_local_action("Pause").call()
-      elif status_decode['playing'] == False:
+      elif status_decode['playing'] == "false":
         lookup_local_event('Playback').emit('Paused')
         if lookup_local_event('DesiredPlayback').getArg() == "Playing":
           lookup_local_action("Play").call()
 
-      if status_decode['muted'] == True:
+      if status_decode['muted'] == "true":
         lookup_local_event('Mute').emit('On')
         if lookup_local_event('DesiredMute').getArg() == "Off":
           lookup_local_action("Mute").call("Off")
-      elif status_decode['muted'] == False:
+      elif status_decode['muted'] == "false":
         lookup_local_event('Mute').emit('Off')
         if lookup_local_event('DesiredMute').getArg() == "On":
           lookup_local_action("Mute").call("On")
