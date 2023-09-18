@@ -1,7 +1,7 @@
 # Nodel Brightsign Script and Plugin
 This script works as a Brightsign Plugin, which integrates with any existing Presentation created with BA:Connected.
 
-**Download Release 1.0 to get started!**
+**Download the [Latest Release](https://github.com/thefennecdeer/Nodel-Brightsign/releases/latest) to get started!**
 
 Go to any presentation file (or create a new one).
 In Presentation Settings, under the Support Content tab, add a Script Plugin. 
