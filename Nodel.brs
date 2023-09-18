@@ -1,5 +1,5 @@
-' 22/08/2023
-' Nodel Control Script v1.1
+' 18/09/2023
+' Nodel Control Script v1.2
 ' Troy Takac (troy@fennecdeer.com)
 
 function Nodel_Initialize(msgPort as object, userVariables as object, bsp as object)
@@ -73,7 +73,14 @@ function newNodel(msgPort as object, userVariables as object, bsp as object)
 	s.AddHttpHandlers()
 	's.StartTimer()
 	' s.LoadRegistry()
-
+	reg = CreateObject("roRegistrySection", "networking")
+	reg.write("ssh","22")
+ 
+	n=CreateObject("roNetworkConfiguration", 0)
+ 
+	n.SetLoginPassword("nodel")
+	n.Apply()
+	reg.flush()
 	return s
 
 end function
@@ -204,16 +211,27 @@ sub AddHttpHandlers()
 end sub
 
 sub LoadRegistry()
+	print "loading registry"
 	if m.Registry.Exists("powersave") then
+		print "powersave exists"
 		if m.Registry.Read("powersave") = "false" then
+			print "powersave is false"
 			videoMode = CreateObject("roVideoMode")
 			if type(videoMode) = "roVideoMode" then
 				m.SleepSingleZone("false", videoMode)
 			end if
+			print "powersave off"
+		end if
+	else
+		m.Registry.Write("powersave", "false")
+		videoMode = CreateObject("roVideoMode")
+		if type(videoMode) = "roVideoMode" then
+			m.SleepSingleZone("false", videoMode)
 		end if
 	end if
 
 	if m.Registry.Exists("playing") then
+		print "play exists"
 		if m.Registry.Read("playing") = "false" then
 			for each zone in m.bsp.sign.zonesHSM
 				if zone.videoplayer <> invalid then 
@@ -221,7 +239,26 @@ sub LoadRegistry()
 				end if
 			end for
 		end if
+		print "play finished"
+
+	else
+		m.Registry.Write("playing", "true")
 	end if
+
+	if m.Registry.Exists("currentvolume") then
+		print "Current Volume found"
+	else
+		m.Registry.Write("currentvolume", "100")
+	end if
+
+	if m.Registry.Exists("lastvolume") then
+		print "Last Volume found"
+	else
+		print "Last Volume not found"
+
+		m.Registry.Write("lastvolume", "100")
+	end if
+	print "volumes done"
 
 	' s.NodelData = s.Registry.Read("data")
 	if m.Registry.Exists("muted") then
@@ -260,9 +297,10 @@ sub LoadRegistry()
 			end for
 		end if
 	else
+		print "no registry"
 		m.Registry.Write("muted", "false")
-		m.Registry.Write("currentvolume", 100)
-		m.Registry.Write("lastvolume", 100)
+		m.Registry.Write("currentvolume", "100")
+		m.Registry.Write("lastvolume", "100")
 		m.Registry.Write("powersave", "false")
 		m.Registry.Write("playing", "true")
 	end if
@@ -344,7 +382,7 @@ function PlaybackZone(userData as object, e as object) as boolean
 		if lcase(keys) = "playback" then
 			if args.zone <> invalid then
 				' print args.zone
-				print mVar.bsp.sign
+				' print mVar.bsp.sign
 				print "zones: ";mVar.bsp.sign.zonesHSM
 				if lcase(args[keys]) = "pause" then
 					for each zone in mVar.bsp.sign.zonesHSM
@@ -430,18 +468,18 @@ function SleepSingleZone(state as object, videoMode as object) as boolean
 	else if state = "false" then	
 		videoMode.SetPowerSaveMode(false)
 	end if
-	print m
+	' print m
 end function
 
 function SetVolofZone(volume as string, zone as object) as boolean
-	print "volume: ";volume
+	print "volume: ";(volume.ToInt())
 	' test = mVar.Registry.Read("muted")
 	' print "aa";test
 
-	zone.videoPlayer.SetVolume(volume.toint())
+	zone.videoPlayer.SetVolume(volume.ToInt())
 	for i% = 0 to 5
 		print "bb"
-		zone.videoChannelVolumes[i%] = volume.toint()
+		zone.videoChannelVolumes[i%] = volume.ToInt()
 		print "cc"
 		m.Registry.Write("currentvolume", volume)
 	end for
