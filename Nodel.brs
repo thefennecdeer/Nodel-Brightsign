@@ -39,12 +39,13 @@ function newNodel(msgPort as object, userVariables as object, bsp as object)
 	s.GetStatusinfo = GetStatusinfo
 	s.PlaybackZone = PlaybackZone
 	s.MuteZone = MuteZone
+	s.SetVolZone = SetVolZone
 	s.RebootPlayer = RebootPlayer
 	s.DefaultsPlayer = DefaultsPlayer
 
 	s.PlaybackSingleZone = PlaybackSingleZone
 	s.SleepSingleZone = SleepSingleZone
-	s.SetVolofZone = SetVolofZone
+	s.SetVolSingleZone = SetVolSingleZone
 	s.LoadRegistry = LoadRegistry 
 
 	s.Registry = CreateObject("roRegistrySection", "Nodel")
@@ -221,6 +222,7 @@ sub LoadRegistry()
 				m.SleepSingleZone("false", videoMode)
 			end if
 			print "powersave off"
+
 		end if
 	else
 		m.Registry.Write("powersave", "false")
@@ -247,6 +249,7 @@ sub LoadRegistry()
 
 	if m.Registry.Exists("currentvolume") then
 		print "Current Volume found"
+
 	else
 		m.Registry.Write("currentvolume", "100")
 	end if
@@ -273,12 +276,12 @@ sub LoadRegistry()
 					if type(zone.videoPlayer) = "roVideoPlayer" then
 						print "we muting!!2"
 
-						m.SetVolofZone("0", zone)
+						m.SetVolSingleZone("0", zone)
 					end if
 				end if
 				if type(zone) = "roAssociativeArray" then
 					if type(zone.audioPlayer) = "roAudioPlayer" then
-						m.SetVolofZone("0", zone)
+						m.SetVolSingleZone("0", zone)
 					end if
 				end if
 			end for
@@ -286,12 +289,12 @@ sub LoadRegistry()
 			for each zone in m.bsp.sign.zonesHSM
 				if type(zone) = "roAssociativeArray" then
 					if type(zone.videoPlayer) = "roVideoPlayer" then
-						m.SetVolofZone(m.Registry.Read("lastvolume"), zone)
+						m.SetVolSingleZone(m.Registry.Read("currentvolume"), zone)
 					end if
 				end if
 				if type(zone) = "roAssociativeArray" then
 					if type(zone.audioPlayer) = "roAudioPlayer" then
-						m.SetVolofZone(m.Registry.Read("lastvolume"), zone)
+						m.SetVolSingleZone(m.Registry.Read("currentvolume"), zone)
 					end if
 				end if
 			end for
@@ -323,6 +326,7 @@ sub AddStatusUrls()
 	m.GetStatusinfoAA = { HandleEvent: m.GetStatusinfo, mVar: m }
 	m.GetPlaybackZoneAA = { HandleEvent: m.PlaybackZone, mVar: m }
 	m.GetMuteZoneAA = { HandleEvent: m.MuteZone, mVar: m }
+	m.SetVolZoneAA = { HandleEvent: m.SetVolZone, mVar: m }
 	m.RebootPlayerAA = { HandleEvent: m.RebootPlayer, mVar: m }
 	m.DefaultsPlayerAA = { HandleEvent: m.DefaultsPlayer, mVar: m }
 
@@ -330,6 +334,7 @@ sub AddStatusUrls()
 
 	m.pluginLocalWebServer.AddGetFromEvent({ url_path: "/playback", user_data: m.GetPlaybackZoneAA })
 	m.pluginLocalWebServer.AddGetFromEvent({ url_path: "/mute", user_data: m.GetMuteZoneAA })
+	m.pluginLocalWebServer.AddGetFromEvent({ url_path: "/volume", user_data: m.SetVolZoneAA })
 	m.pluginLocalWebServer.AddGetFromEvent({ url_path: "/reboot", user_data: m.RebootPlayerAA })
 	m.pluginLocalWebServer.AddGetFromEvent({ url_path: "/default", user_data: m.DefaultsPlayerAA })
 	' m.pluginLocalWebServer.AddPostToFormData({ url_path: "/resume", user_data: m.GetEventinfoAA })
@@ -343,12 +348,11 @@ function RebootPlayer(userData as object, e as object) as boolean
 
 	for each keys in args
 		if lcase(keys) = "reboot" then
-			if lcase(args[keys]) then
-				e.SetResponseBodyString("a")
-				e.SendResponse(200)
-				a = RestartApplication()
-   				stop
-			end if
+			e.SetResponseBodyString("a")
+			e.SendResponse(200)
+			RebootSystem()
+   			stop
+			
 		end if
 	end for 
 end function
@@ -437,6 +441,12 @@ function PlaybackZone(userData as object, e as object) as boolean
 				if type(videoMode) = "roVideoMode" then
 					mVar.SleepSingleZone("true", videoMode)
 					mVar.Registry.Write("powersave", "true")
+					for each zone in mVar.bsp.sign.zonesHSM
+						if type(zone) = "roAssociativeArray" then
+							mVar.Registry.Write("lastvolume", mVar.Registry.Read("currentvolume"))
+							mVar.SetVolSingleZone("0", zone)
+						end if
+					end for
 				end if
 				videoMode = invalid
 			else if lcase(args[keys]) = "false" then
@@ -444,6 +454,11 @@ function PlaybackZone(userData as object, e as object) as boolean
 				if type(videoMode) = "roVideoMode" then
 					mVar.SleepSingleZone("false", videoMode)
 					mVar.Registry.Write("powersave", "false")
+					for each zone in m.bsp.sign.zonesHSM
+						if type(zone) = "roAssociativeArray" then
+							mVar.SetVolSingleZone( mVar.Registry.Read("lastvolume"), zone)
+						end if
+					end for
 				end if
 				videoMode = invalid
 			end if
@@ -471,7 +486,8 @@ function SleepSingleZone(state as object, videoMode as object) as boolean
 	' print m
 end function
 
-function SetVolofZone(volume as string, zone as object) as boolean
+function SetVolSingleZone(volume as string, zone as object) as boolean
+
 	print "volume: ";(volume.ToInt())
 	' test = mVar.Registry.Read("muted")
 	' print "aa";test
@@ -484,6 +500,35 @@ function SetVolofZone(volume as string, zone as object) as boolean
 		m.Registry.Write("currentvolume", volume)
 	end for
 	print "almost"
+	m.Registry.Flush()
+
+end function
+
+function SetVolZone(userData as object, e as object) as boolean
+	mVar = userData.mVar
+	args = e.GetRequestParams()
+	' print "we muted: ";mVar.Muted
+
+	' print mVar.bsp
+	' print "bsp.sign: ";mVar.bsp.sign
+	for each keys in args
+		print "we setting volume"
+		print "setvolzone volume: "; keys
+		for each zone in mVar.bsp.sign.zonesHSM
+			if type(zone) = "roAssociativeArray" then
+				if mVar.Registry.Read("muted") = "true" then
+					mVar.Registry.Write("lastvolume", volume)
+				else
+					mVar.SetVolSingleZone(keys, zone)
+				end if
+			end if
+		end for
+	end for
+	' mVar.bsp.muteaudiooutputs(true, mVar)
+	' print mVar.LastVolume
+	e.SetResponseBodyString("Muted")
+	e.SendResponse(200)
+	' print mVar.bsp
 
 end function
 
@@ -509,7 +554,7 @@ function MuteZone(userData as object, e as object) as boolean
 						
 						if mVar.Registry.Read("muted") <> "true" then
 							mVar.Registry.Write("lastvolume", zone.videoChannelVolumes[0].tostr())
-							mVar.SetVolofZone("0", zone)
+							mVar.SetVolSingleZone("0", zone)
 							mVar.Registry.Write("muted", "true")
 
 						end if
@@ -518,7 +563,7 @@ function MuteZone(userData as object, e as object) as boolean
 
 						if mVar.Registry.Read("muted") <> "true" then
 							mVar.Registry.Write("lastvolume", zone.audioChannelVolumes[0].tostr())
-							mVar.SetVolofZone("0", zone)
+							mVar.SetVolSingleZone("0", zone)
 							mVar.Registry.Write("muted", "true")
 						end if
 					end if
@@ -540,7 +585,7 @@ function MuteZone(userData as object, e as object) as boolean
 						print "aa";mVar.Registry.Read("muted")
 						if mVar.Registry.Read("muted") <> "false" then
 							print "bb"
-							mVar.SetVolofZone(mVar.Registry.Read("lastvolume"), zone)
+							mVar.SetVolSingleZone(mVar.Registry.Read("lastvolume"), zone)
 
 							mVar.Registry.Write("muted", "false") 
 						end if
@@ -550,7 +595,7 @@ function MuteZone(userData as object, e as object) as boolean
 						print "gg"
 						if mVar.Registry.Read("muted") <> "false" then
 							print "hh"
-							mVar.SetVolofZone(mVar.Registry.Read("lastvolume"), zone)
+							mVar.SetVolSingleZone(mVar.Registry.Read("lastvolume"), zone)
 
 							mVar.Registry.Write("muted", "false") 
 						end if
