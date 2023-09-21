@@ -1,5 +1,5 @@
 '''
-##### **Brightsign Node** <sup>v1.0</sup> 
+##### **Brightsign Node** <sup>v1.2</sup> 
 Requires the [Nodel Brightsign Plugin](https://github.com/thefennecdeer/Nodel-Brightsign)
 
 ---
@@ -44,8 +44,6 @@ local_event_Volume = LocalEvent({'order': next_seq(), 'schema': { 'type': 'strin
 local_event_Mute = LocalEvent({'group': 'Volume', 'order': next_seq(),'schema': {'type': 'string', 'enum': ['On', 'Off']},
                                 'desc': 'Mute State'})
 
-local_event_DesiredMute = LocalEvent({'group': 'Volume', 'order': next_seq(),'schema': {'type': 'string', 'enum': ['On', 'Off']},
-                                'desc': 'Desired Mute State'})  
 
 local_event_Playback = LocalEvent({'group': 'Playback', 'order': next_seq(),'schema': {'type': 'string'},
                                 'desc': 'Playback State'})
@@ -86,11 +84,21 @@ def Sleep(arg = None):
   lookup_local_action("Power").call("Off")
 
 
+    
+@local_action({ 'title': 'Volume', 'order': next_seq(), 'schema': { 'type': 'integer', 'hint': '(0 - 100%)' }})
+def Volume(arg):
+    if arg == None or arg < 0 or arg > 100:
+      console.warn('Volume: no arg or outside 0 - 100')
+      return
+    send_get("/volume?%s" % arg)
 
 @local_action({'group': 'Power', 'title': 'Reboot', 'order': next_seq()})  
 def reboot(arg = None):
   console.log("sending Reboot")
   send_get("/reboot?reboot=true")
+
+local_event_DesiredMute = LocalEvent({'group': 'Volume', 'order': next_seq(),'schema': {'type': 'string', 'enum': ['On', 'Off']},
+                                'desc': 'Desired Mute State'})  
 
 @local_action({'group': 'Volume', 'title': 'Mute', 'order': next_seq(), 'schema': {'type': 'string', 'enum': ['On', 'Off']}})  
 def Mute(arg):
@@ -102,11 +110,11 @@ def Mute(arg):
     local_event_DesiredMute.emit("Off")
     send_get("/mute?unmute")
 
-@local_action({'group': 'Volume', 'title': 'On', 'order': next_seq()})
+@local_action({'group': 'Volume', 'title': 'Mute On', 'order': next_seq()})
 def MuteOn():
   Mute.call('On')
   
-@local_action({'group': 'Volume', 'title': 'Off', 'order': next_seq()})
+@local_action({'group': 'Volume', 'title': 'Mute Off', 'order': next_seq()})
 def MuteOff():
   Mute.call('Off')  
 
@@ -145,6 +153,7 @@ def status_get():
       lookup_local_event('Volume').emit(status_decode['volume'])
       lookup_local_event('Serial').emit(status_decode['serialNumber'])
       lookup_local_event('VideoMode').emit(status_decode['videomode'])
+      lookup_local_event('volume').emit(status_decode['volume'])
 
       if status_decode['sleep'] == "true":
         lookup_local_event('Power').emit('Off')
