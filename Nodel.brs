@@ -454,7 +454,7 @@ function PlaybackZone(userData as object, e as object) as boolean
 				if type(videoMode) = "roVideoMode" then
 					mVar.SleepSingleZone("false", videoMode)
 					mVar.Registry.Write("powersave", "false")
-					for each zone in m.bsp.sign.zonesHSM
+					for each zone in mVar.bsp.sign.zonesHSM
 						if type(zone) = "roAssociativeArray" then
 							mVar.SetVolSingleZone( mVar.Registry.Read("lastvolume"), zone)
 						end if
