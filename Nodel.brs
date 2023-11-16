@@ -429,6 +429,11 @@ function PlaybackZone(userData as object, e as object) as boolean
 				if lcase(args[keys]) = "play" then
 					for each zone in mVar.bsp.sign.zonesHSM
 						if zone.videoplayer <> invalid then 
+							videoMode = CreateObject("roVideoMode")
+							if mVar.Registry.Read("powersave") = "false" then
+								mVar.SleepSingleZone("false", videoMode)
+								mVar.Registry.Write("powersave", "false")
+							end if
 							mVar.PlaybackSingleZone("play", zone)
 							mVar.Registry.Write("playing", "true")
 						end if
@@ -445,6 +450,10 @@ function PlaybackZone(userData as object, e as object) as boolean
 						if type(zone) = "roAssociativeArray" then
 							mVar.Registry.Write("lastvolume", mVar.Registry.Read("currentvolume"))
 							mVar.SetVolSingleZone("0", zone)
+							if zone.videoplayer <> invalid then 
+								mVar.PlaybackSingleZone("pause", zone)
+								mVar.Registry.Write("playing", "false")
+							end if
 						end if
 					end for
 				end if
@@ -457,6 +466,10 @@ function PlaybackZone(userData as object, e as object) as boolean
 					for each zone in mVar.bsp.sign.zonesHSM
 						if type(zone) = "roAssociativeArray" then
 							mVar.SetVolSingleZone( mVar.Registry.Read("lastvolume"), zone)
+							if zone.videoplayer <> invalid then 
+								mVar.PlaybackSingleZone("play", zone)
+								mVar.Registry.Write("playing", "true")
+							end if
 						end if
 					end for
 				end if
@@ -517,7 +530,11 @@ function SetVolZone(userData as object, e as object) as boolean
 		for each zone in mVar.bsp.sign.zonesHSM
 			if type(zone) = "roAssociativeArray" then
 				if mVar.Registry.Read("muted") = "true" then
-					mVar.Registry.Write("lastvolume", volume)
+					if mVar.Registry.Read("powersave") = "false" then
+						mVar.Registry.Write("lastvolume", volume)
+					else
+						mVar.SetVolSingleZone(keys, zone)
+					end if
 				else
 					mVar.SetVolSingleZone(keys, zone)
 				end if
